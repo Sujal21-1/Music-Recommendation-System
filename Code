@@ -1,0 +1,131 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics.pairwise import cosine_similarity
+
+# ================================
+# LOAD DATA
+# ================================
+
+df = pd.read_csv("spotify-tracks-dataset.csv")
+print("Preview:\n", df.head())
+print("\nInfo:\n")
+print(df.info())
+
+# Drop unnecessary columns
+df = df.drop(columns=[col for col in ['Unnamed: 0', 'Unnamed: 0.1'] if col in df.columns])
+
+#Remove missing values
+df = df.dropna()
+# Reduce genres (improves model performance)
+top_genres = df['track_genre'].value_counts().head(20).index
+df = df[df['track_genre'].isin(top_genres)]
+
+top_genres_pop = df.groupby('track_genre')['popularity'].mean().sort_values(ascending=False).head(10)
+
+plt.figure()
+top_genres_pop.plot(kind='bar')
+plt.title('Top Genres Popularity')
+plt.xlabel('Genre')
+plt.ylabel('Popularity')
+plt.tight_layout()
+plt.show()
+
+#Heatmap
+plt.figure(figsize=(10,6))
+sns.heatmap(df.corr(numeric_only=True), annot=False, cmap='coolwarm')
+plt.title('Feature Correlation Heatmap')
+plt.show()
+
+# ======================
+# MACHINE LEARNING MODEL
+# ======================
+features = ['danceability', 'energy', 'loudness', 'speechiness',
+            'acousticness', 'instrumentalness', 'valence', 'tempo']
+
+X = df[features]
+y = df['track_genre']
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+model = RandomForestClassifier(n_estimators=200, max_depth=15, random_state=42)
+model.fit(X_train, y_train)
+
+accuracy = model.score(X_test, y_test)
+print("\nModel Accuracy:", accuracy)
+
+# ========================
+# RECOMMENDATION SYSTEM
+# ========================
+df_sample = df.sample(n=5000, random_state=42).reset_index(drop=True)
+
+rec_features = df_sample[['danceability', 'energy', 'valence', 'tempo']]
+
+# Compute similarity
+similarity = cosine_similarity(rec_features)
+
+#--------------------------
+# Recommend by index
+
+# -------------------------
+def recommend(song_index):
+    scores = list(enumerate(similarity[song_index]))
+    scores = sorted(scores, key=lambda x:x[1], reverse=True)
+
+    print("\nRecommend Songs:\n" + "="*30)
+
+    seen = set()
+
+    for i in scores [1:]:
+        song = df_sample.iloc[i[0]]['track_name']
+
+        if song not in seen:
+            print(song, "-", df_sample.iloc[i[0]]['artists'])
+            seen.add(song)
+
+        if len(seen) == 5:
+            break
+
+# ---------------------------------------
+# Recommend by song name (SMART SEARCH)
+# ---------------------------------------
+def recommend_by_name(song_name):
+    matches = df_sample[df_sample['track_name'].str.contains(song_name, case=False, na=False)]
+
+    if matches.empty:
+        print("Song not found")
+        return
+
+    index = matches.index[0]
+
+    print("\nSelected Song:\n" + "="*30)
+    print(df_sample.iloc[index]['track_name'], "-", df_sample.iloc[index]['artists'])
+
+    scores = list(enumerate(similarity[index]))
+    scores = sorted(scores, key=lambda x: x[1], reverse=True)
+
+    print("\nRecommend Songs:\n" + "="*30)
+
+    seen = set()
+    for i in scores[1:]:
+        song = df_sample.iloc[i[0]]['track_name']
+
+        if song not in seen:
+            print(song, "-", df_sample.iloc[i[0]]['artists'])
+            seen.add(song)
+
+            if len(seen) == 5:
+                break
+
+print("\n---- Recommendation by Index -----")
+recommend(1)
+
+print("\n---- Recommendation by Name ---")
+recommend_by_name("Billie Jean")
+
+
+
