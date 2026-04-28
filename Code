@@ -122,10 +122,12 @@ def recommend_by_name(song_name):
                 break
 
 print("\n---- Recommendation by Index -----")
-recommend(1)
+user_index = int(input("Enter a song index (number): "))
+recommend(user_index)
 
 print("\n---- Recommendation by Name ---")
-recommend_by_name("Billie Jean")
+user_song = input("Enter a song name: ").strip()
+recommend_by_name(user_song)
 
 
 
