@@ -45,8 +45,7 @@ Computed cosine similarity between songs
 Recommended top 5 similar songs based on:
 Song index
 Song name (user input)
-▶️ How to Run
-Clone the repository
+
 
 Install required libraries:
 
